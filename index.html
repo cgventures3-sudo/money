@@ -1,0 +1,604 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="color-scheme" content="light dark" />
+<title>Money</title>
+<style>
+  :root, [data-theme="light"] {
+    --text-xs: 0.75rem; --text-sm: 0.875rem; --text-base: 0.95rem; --text-lg: 1.15rem; --text-xl: 1.5rem;
+    --s1:0.25rem; --s2:0.5rem; --s3:0.75rem; --s4:1rem; --s5:1.25rem; --s6:1.5rem;
+    --bg:#efeae2; --surface:#f7f3ec; --surface-2:#ebe4d8; --border:#d4ccbe; --divider:#e2dbd0;
+    --text:#241f18; --muted:#6b6458; --faint:#948c80; --inverse:#f7f3ec;
+    --primary:#1f6f6c; --primary-soft:#d7e8e6;
+    --brass:#a67c3d; --brass-soft:#efe0c8;
+    --blue:#2b5f8a; --blue-soft:#d9e4ef;
+    --green:#3d6b28; --green-soft:#dcead3;
+    --pink:#8e3a4a; --pink-soft:#f0d6db;
+    --warn:#8a6d10; --warn-soft:#f4e8c4; --late:#a32d24; --late-soft:#f3d4d1;
+    --radius:0.55rem; --radius-lg:0.85rem;
+    --shadow:0 1px 2px rgba(36,31,24,0.06); --shadow-md:0 12px 28px rgba(36,31,24,0.10);
+    --font:'Segoe UI', system-ui, -apple-system, sans-serif;
+  }
+  [data-theme="dark"] {
+    --bg:#161412; --surface:#1e1b18; --surface-2:#27231e; --border:#3d3832; --divider:#2e2a25;
+    --text:#e6dfd3; --muted:#a89f92; --faint:#7e766b; --inverse:#161412;
+    --primary:#5aa8a4; --primary-soft:#243836;
+    --brass:#c4a36a; --brass-soft:#3a2f1e;
+    --blue:#7aa3c9; --blue-soft:#22303c;
+    --green:#8fb56e; --green-soft:#27331c;
+    --pink:#d48a94; --pink-soft:#3a2228;
+    --warn:#e0c56a; --warn-soft:#3a3214; --late:#e08b84; --late-soft:#3c1e1c;
+    --shadow:0 1px 2px rgba(0,0,0,0.35); --shadow-md:0 12px 28px rgba(0,0,0,0.45);
+  }
+  *,*::before,*::after{ box-sizing:border-box; margin:0; padding:0; }
+  html{ -webkit-font-smoothing:antialiased; }
+  body{ min-height:100vh; font-family:var(--font); font-size:var(--text-base); line-height:1.4; background:var(--bg); color:var(--text); }
+  button,input,select,textarea{ font:inherit; color:inherit; }
+  button{ border:0; cursor:pointer; }
+  input,select,textarea{ width:100%; border:1px solid var(--border); background:var(--surface); border-radius:var(--radius); padding:.55rem .7rem; outline:none; }
+  textarea{ min-height:64px; resize:vertical; }
+  input:focus,select:focus,textarea:focus,button:focus-visible{ outline:2px solid var(--primary); outline-offset:2px; }
+  .shell{ max-width:1360px; margin:0 auto; padding:1.25rem 1.5rem 2rem; display:grid; gap:1.25rem; }
+  .topbar{ display:flex; justify-content:space-between; align-items:center; gap:var(--s3); flex-wrap:wrap;
+    padding:.85rem 1.1rem; background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); position:sticky; top:.5rem; z-index:20; }
+  .brand{ display:flex; align-items:center; gap:var(--s3); }
+  .brand-mark{ width:2.1rem; height:2.1rem; padding:.3rem; border-radius:.6rem; background:var(--primary-soft); color:var(--primary); }
+  .brand h1{ font-size:1.25rem; letter-spacing:-0.02em; line-height:1.1; }
+  .brand p{ font-size:var(--text-xs); color:var(--muted); }
+  .actions{ display:flex; gap:var(--s2); align-items:center; flex-wrap:wrap; }
+  .btn{ min-height:36px; border-radius:var(--radius); padding:.45rem .75rem; border:1px solid var(--border); background:var(--surface); font-size:var(--text-sm); font-weight:600; }
+  .btn-primary{ background:var(--primary); color:var(--inverse); border-color:var(--primary); }
+  .btn.sm{ min-height:32px; padding:.3rem .55rem; font-size:var(--text-xs); }
+  .save-status{ font-size:var(--text-xs); color:var(--muted); font-weight:600; min-width:3.5rem; }
+  .save-status.flash{ color:var(--green); }
+  .hidden{ display:none !important; }
+  .sync-dot{ width:.55rem; height:.55rem; border-radius:50%; display:inline-block; margin-right:.4rem; background:var(--faint); vertical-align:middle; }
+  .sync-status.ok .sync-dot, .sync-status.flash .sync-dot{ background:var(--green); }
+  .sync-status.failed .sync-dot{ background:var(--pink); }
+  .sync-status.offline .sync-dot{ background:var(--warn); }
+  .sync-banner{ padding:.85rem 1.1rem; background:var(--brass-soft); border:1px solid var(--border); border-radius:var(--radius-lg); color:var(--text); font-size:var(--text-sm); }
+  .sync-banner strong{ color:var(--brass); }
+  .sync-banner .fine{ margin-top:.25rem; color:var(--faint); font-size:var(--text-xs); }
+
+  .board{ display:grid; grid-template-columns:340px minmax(0,1.15fr) minmax(0,1.05fr); gap:1.25rem; align-items:stretch; }
+  .score{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:1.5rem 1.35rem; display:grid; gap:1.15rem; align-content:start; }
+  .board{ display:grid; grid-template-columns:340px minmax(0,1.1fr) minmax(0,1fr); gap:1.25rem; align-items:start; }
+  .panel{ background:var(--surface); border:1px solid var(--border); border-radius:var(--radius-lg); box-shadow:var(--shadow); padding:1.15rem 1.2rem; display:grid; gap:.85rem; align-content:start; min-width:0; }
+  .panel-head{ display:flex; justify-content:space-between; align-items:center; gap:var(--s3); }
+  .panel-head h2{ font-size:var(--text-lg); letter-spacing:-0.01em; }
+  .col{ display:grid; gap:1.25rem; align-content:start; min-width:0; }
+  .hero{ text-align:center; }
+  .hero .k{ font-size:var(--text-xs); font-weight:700; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); }
+  .big{ font-size:2.8rem; font-weight:800; font-variant-numeric:tabular-nums; letter-spacing:-0.03em; line-height:1.05; color:var(--green); }
+  .big.neg{ color:var(--late); }
+  .stats{ display:grid; grid-template-columns:1fr 1fr; gap:.6rem; }
+  .stat{ background:var(--surface-2); border:1px solid var(--divider); border-radius:var(--radius); padding:.6rem .7rem; text-align:left; }
+  .stat .k{ font-size:var(--text-xs); color:var(--muted); font-weight:700; text-transform:uppercase; letter-spacing:.04em; }
+  .stat .v{ font-size:var(--text-lg); font-weight:700; font-variant-numeric:tabular-nums; }
+  .muted{ color:var(--muted); font-size:var(--text-sm); }
+  .fine{ color:var(--faint); font-size:var(--text-xs); }
+  .row{ display:flex; gap:.5rem; align-items:end; flex-wrap:wrap; }
+  .row > *{ flex:1 1 7rem; }
+  .field{ display:grid; gap:.2rem; }
+  .field label{ font-size:var(--text-xs); font-weight:700; color:var(--muted); text-transform:uppercase; letter-spacing:.04em; }
+  .list{ display:grid; gap:.4rem; }
+  .item{ display:flex; align-items:center; gap:.6rem; padding:.55rem .65rem; border:1px solid var(--divider); border-radius:var(--radius); background:var(--surface-2); }
+  .item.over{ border-color:var(--late); background:var(--late-soft); }
+  .item.soon{ border-color:var(--warn); }
+  .item .body{ flex:1; min-width:0; }
+  .item .name{ font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .item .meta{ font-size:var(--text-xs); color:var(--muted); }
+  .amt{ font-weight:700; font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .amt.in{ color:var(--green); }
+  .x,.gear{ background:transparent; color:var(--faint); font-size:1.05rem; padding:.15rem .35rem; border-radius:.35rem; }
+  .x:hover{ color:var(--late); } .gear:hover{ color:var(--primary); }
+  .tabs{ display:flex; gap:.35rem; }
+  .tab{ background:var(--surface-2); border:1px solid var(--divider); border-radius:999px; padding:.25rem .7rem; font-size:var(--text-xs); font-weight:700; }
+  .tab.on{ background:var(--primary); color:var(--inverse); border-color:var(--primary); }
+  .bar{ height:6px; background:var(--divider); border-radius:3px; overflow:hidden; }
+  .bar > i{ display:block; height:100%; background:var(--brass); }
+  .cat{ display:grid; grid-template-columns:7rem 1fr auto; gap:.6rem; align-items:center; font-size:var(--text-sm); }
+  @media (max-width:1100px){ .board{ grid-template-columns:1fr 1fr; } .board > .col:first-child{ grid-column:1/-1; } }
+  @media (max-width:760px){
+    .shell{ padding:.75rem; gap:.85rem; } .board{ grid-template-columns:1fr; gap:.85rem; } .col{ gap:.85rem; }
+    .topbar{ position:static; } .big{ font-size:2.4rem; }
+    input,select{ font-size:16px; }
+  }
+</style>
+<script>
+(function(){
+  try {
+    var raw = localStorage.getItem('money-v1');
+    var t = null;
+    if(raw){ var p = JSON.parse(raw); t = p && p.theme; }
+    if(t !== 'dark' && t !== 'light'){ t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'; }
+    document.documentElement.setAttribute('data-theme', t);
+  } catch(e){ document.documentElement.setAttribute('data-theme', 'light'); }
+})();
+</script>
+</head>
+<body>
+<div class="shell">
+  <header class="topbar">
+    <div class="brand">
+      <div class="brand-mark" aria-hidden="true">
+        <svg viewBox="0 0 48 48" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M24 6v36"/><path d="M33 13H20a6 6 0 0 0 0 12h8a6 6 0 0 1 0 12H14"/></svg>
+      </div>
+      <div><h1>Money</h1><p id="topDate">Know your number</p></div>
+    </div>
+    <div class="actions">
+      <span id="syncStatus" class="save-status sync-status" aria-live="polite"><span class="sync-dot" aria-hidden="true"></span>Connecting…</span>
+      <button class="btn" id="reconnectBtn" type="button" hidden>Reconnect</button>
+      <span id="saveStatus" class="save-status" aria-live="polite"></span>
+      <button class="btn" id="themeBtn" type="button">Theme</button>
+      <button class="btn" id="exportBtn" type="button">Export</button>
+      <label class="btn" for="importFile">Import</label>
+      <input id="importFile" class="hidden" type="file" accept="application/json" />
+    </div>
+  </header>
+
+  <div id="syncBanner" class="sync-banner" role="note">
+    <strong>Bookmark this exact link</strong> so phone and desktop stay in sync.
+    <p class="fine">Don’t share this URL — anyone with it can read and change your data. Your money lives in a private sync slot named by the <code>#s=</code> in the address bar.</p>
+  </div>
+
+  <div class="board">
+    <div class="col">
+      <section class="panel hero">
+        <div class="k">Safe to spend</div>
+        <div class="big" id="safe">$0</div>
+        <div class="muted" id="safeSub"></div>
+        <div class="stats">
+          <div class="stat"><div class="k">Payday in</div><div class="v" id="daysTo">–</div></div>
+          <div class="stat"><div class="k">Safe / day</div><div class="v" id="perDay">–</div></div>
+          <div class="stat"><div class="k">Balance</div><div class="v" id="balShow">–</div></div>
+          <div class="stat"><div class="k">Bills before payday</div><div class="v" id="dueShow">–</div></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Checking balance</h2><span class="fine" id="balAsOf"></span></div>
+        <form id="balForm" class="row">
+          <div class="field"><label>Balance</label><input id="balAmt" type="number" step="0.01" inputmode="decimal" placeholder="0.00" /></div>
+          <div class="field"><label>As of</label><input id="balDate" type="date" /></div>
+          <button class="btn btn-primary" type="submit" style="flex:0 0 auto">Update</button>
+        </form>
+        <p class="fine">Logged expenses dated after the "as of" date are subtracted automatically; income after it is added.</p>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Income</h2></div>
+        <form id="payForm" class="row">
+          <div class="field"><label>Paycheck (net)</label><input id="payAmt" type="number" step="0.01" inputmode="decimal" /></div>
+          <div class="field"><label>Next payday</label><input id="payDate" type="date" /></div>
+          <button class="btn" type="submit" style="flex:0 0 auto">Save</button>
+        </form>
+        <p class="fine">Every two weeks. <button class="btn sm" type="button" id="gotPaidBtn">Got paid ✓</button> logs it and rolls to the next payday.</p>
+        <form id="incForm" class="row">
+          <div class="field"><label>One-off income</label><input id="incAmt" type="number" step="0.01" inputmode="decimal" placeholder="Amount" /></div>
+          <div class="field"><label>Note</label><input id="incNote" type="text" placeholder="Commission" /></div>
+          <div class="field"><label>Date</label><input id="incDate" type="date" /></div>
+          <button class="btn" type="submit" style="flex:0 0 auto">Add</button>
+        </form>
+        <div class="list" id="incList"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <div class="panel-head"><h2>Log expense</h2></div>
+        <form id="expForm" class="row">
+          <div class="field"><label>Amount</label><input id="expAmt" type="number" step="0.01" inputmode="decimal" placeholder="0.00" required /></div>
+          <div class="field"><label>Category</label><input id="expCat" type="text" list="cats" placeholder="Food" /></div>
+          <div class="field"><label>Note</label><input id="expNote" type="text" placeholder="optional" /></div>
+          <div class="field"><label>Date</label><input id="expDate" type="date" /></div>
+          <button class="btn btn-primary" type="submit" id="expSubmit" style="flex:0 0 auto">Add</button>
+          <button class="btn hidden" type="button" id="expCancel" style="flex:0 0 auto">Cancel</button>
+        </form>
+        <datalist id="cats"></datalist>
+        <div class="stats" style="grid-template-columns:repeat(3,1fr)">
+          <div class="stat"><div class="k">Today</div><div class="v" id="tToday">$0</div></div>
+          <div class="stat"><div class="k">This week</div><div class="v" id="tWeek">$0</div></div>
+          <div class="stat"><div class="k">This month</div><div class="v" id="tMonth">$0</div></div>
+        </div>
+      </section>
+      <section class="panel">
+        <div class="panel-head"><h2>Expenses</h2>
+          <div class="tabs" id="rangeTabs"><button class="tab" data-r="today">Today</button><button class="tab" data-r="week">Week</button><button class="tab on" data-r="month">Month</button><button class="tab" data-r="all">All</button></div>
+        </div>
+        <div id="catBreak" class="list"></div>
+        <div class="list" id="expList"></div>
+      </section>
+    </div>
+
+    <div class="col">
+      <section class="panel">
+        <div class="panel-head"><h2>Upcoming costs</h2></div>
+        <form id="billForm" class="row">
+          <div class="field" style="flex-basis:100%"><label>Name</label><input id="billName" type="text" placeholder="Rent, Spotify…" required /></div>
+          <div class="field"><label>Amount</label><input id="billAmt" type="number" step="0.01" inputmode="decimal" required /></div>
+          <div class="field"><label>Due</label><input id="billDue" type="date" required /></div>
+          <div class="field"><label>Repeats</label><select id="billRec"><option value="monthly">Monthly</option><option value="biweekly">Biweekly</option><option value="weekly">Weekly</option><option value="once">One-time</option></select></div>
+          <button class="btn btn-primary" type="submit" id="billSubmit" style="flex:0 0 auto">Add</button>
+          <button class="btn hidden" type="button" id="billCancel" style="flex:0 0 auto">Cancel</button>
+        </form>
+        <div class="list" id="billList"></div>
+        <p class="fine">Mark paid ✓ subtracts it from your balance and rolls recurring bills to the next due date.</p>
+      </section>
+    </div>
+  </div>
+</div>
+
+<script>
+(function(){
+  const STORAGE = 'money-v1';
+  const SYNC_ID_KEY = 'money-sync-id';
+  const JB_API = 'https://jsonblob.com/api/jsonBlob';
+  const CRUD_API = 'https://crudcrud.com/api/85bfb05a311f4a7db2b7cb9efc25935e/money';
+  const TZ = 'America/New_York';
+  let syncId = '', syncBackend = '', crudItemId = '', cloudTimer = null, pushing = false, pendingPush = false, hydrating = true;
+  const $ = function(id){ return document.getElementById(id); };
+  function num(v){ const n = Number(v); return isFinite(n) ? n : 0; }
+  function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+  function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
+  function todayISO(){ return new Intl.DateTimeFormat('en-CA',{timeZone:TZ,year:'numeric',month:'2-digit',day:'2-digit'}).format(new Date()); }
+  function toD(iso){ const p=iso.split('-'); return new Date(Date.UTC(+p[0],+p[1]-1,+p[2])); }
+  function fromD(d){ return d.toISOString().slice(0,10); }
+  function addDays(iso,n){ const d=toD(iso); d.setUTCDate(d.getUTCDate()+n); return fromD(d); }
+  function addMonth(iso){ const d=toD(iso), day=d.getUTCDate(); const t=new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth()+1, 1)); const last=new Date(Date.UTC(t.getUTCFullYear(), t.getUTCMonth()+1, 0)).getUTCDate(); t.setUTCDate(Math.min(day,last)); return fromD(t); }
+  function diffDays(a,b){ return Math.round((toD(b)-toD(a))/86400000); }
+  function money(n){ const neg=n<0; return (neg?'−':'') + '$' + Math.abs(n).toLocaleString('en-US',{minimumFractionDigits:2,maximumFractionDigits:2}); }
+  function fmtShort(iso){ return toD(iso).toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'}); }
+  function nextFriday(){ const t=todayISO(); const dow=toD(t).getUTCDay(); return addDays(t, ((5-dow+7)%7)||7); }
+
+  const state = { theme:'light', balance:null, balanceAsOf:'', pay:{ amount:2300, next:nextFriday() }, expenses:[], bills:[], income:[], updatedAt:0 };
+  let range = 'month', editingExp = null, editingBill = null;
+
+  function serialize(){
+    return { version:1, app:'money', theme: document.documentElement.getAttribute('data-theme') || 'light',
+      balance: state.balance, balanceAsOf: state.balanceAsOf, pay: state.pay, expenses: state.expenses, bills: state.bills, income: state.income, updatedAt: state.updatedAt };
+  }
+  function applyPayload(p){
+    if(!p || typeof p !== 'object') return;
+    if(p.theme==='dark' || p.theme==='light'){ state.theme=p.theme; document.documentElement.setAttribute('data-theme', p.theme); }
+    if('balance' in p) state.balance = p.balance==null ? null : num(p.balance);
+    if(typeof p.balanceAsOf === 'string') state.balanceAsOf = p.balanceAsOf;
+    if(p.pay && typeof p.pay === 'object') state.pay = { amount:num(p.pay.amount), next:String(p.pay.next||state.pay.next) };
+    if(Array.isArray(p.expenses)) state.expenses = p.expenses;
+    if(Array.isArray(p.bills)) state.bills = p.bills;
+    if(Array.isArray(p.income)) state.income = p.income;
+    state.updatedAt = num(p.updatedAt);
+  }
+  function isHumanPayload(p){
+    return !!(p && typeof p === 'object' && !Array.isArray(p) && p.app === 'money' && p.version != null);
+  }
+  function stripMeta(p){
+    if(!p || typeof p !== 'object' || Array.isArray(p)) return p;
+    const out = {};
+    Object.keys(p).forEach(function(k){ if(k !== '_id') out[k] = p[k]; });
+    return out;
+  }
+  function touch(){ state.updatedAt = Date.now(); }
+  function persistLocal(){
+    try{ localStorage.setItem(STORAGE, JSON.stringify(serialize())); flash('Saved'); }
+    catch(e){ flash('Fail'); }
+  }
+  function persist(){
+    touch();
+    persistLocal();
+    if(!hydrating) scheduleCloudSave();
+  }
+  function flash(msg){
+    const el=document.getElementById('saveStatus');
+    if(!el) return;
+    el.textContent=msg; el.className='save-status flash';
+    clearTimeout(flash._t); flash._t=setTimeout(function(){ el.textContent=''; el.className='save-status'; },1200);
+  }
+  function loadLocal(){
+    try{
+      const raw=localStorage.getItem(STORAGE); if(!raw) return;
+      applyPayload(JSON.parse(raw));
+    }catch(e){}
+  }
+
+  function newSyncId(){
+    if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c){
+      const r = Math.random()*16|0;
+      return (c==='x'?r:(r&0x3|0x8)).toString(16);
+    });
+  }
+  function parseHash(){
+    const m = String(location.hash||'').match(/[#&]s=([A-Za-z0-9_-]{8,})/);
+    return m ? m[1] : '';
+  }
+  function setHash(id){
+    syncId = id;
+    try{ localStorage.setItem(SYNC_ID_KEY, id); }catch(e){}
+    const next = '#s=' + id;
+    if(location.hash !== next){
+      try{ history.replaceState(null, '', location.pathname + location.search + next); }
+      catch(e){ location.hash = next; }
+    }
+  }
+  function setSyncStatus(text, cls){
+    const el = document.getElementById('syncStatus'); if(!el) return;
+    el.innerHTML = '<span class="sync-dot" aria-hidden="true"></span>' + text;
+    el.className = 'save-status sync-status' + (cls ? ' ' + cls : '');
+    const btn = document.getElementById('reconnectBtn');
+    if(btn) btn.hidden = !(cls === 'failed' || cls === 'offline');
+  }
+  async function fetchJSON(url, opts){
+    const r = await fetch(url, opts);
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    if(!r.ok){ const err = new Error('http ' + r.status); err.status = r.status; throw err; }
+    if(r.status === 204) return null;
+    if(!ct.includes('json')){ const err = new Error('not-json'); err.status = r.status; throw err; }
+    const text = await r.text();
+    if(!text) return null;
+    return JSON.parse(text);
+  }
+  async function jbCreate(payload){
+    const r = await fetch(JB_API, { method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body: JSON.stringify(payload) });
+    const ct = (r.headers.get('content-type') || '').toLowerCase();
+    if(!r.ok || !ct.includes('json')) throw Object.assign(new Error('jsonblob-create'), {status:r.status});
+    const loc = r.headers.get('Location') || r.headers.get('X-jsonblob-id') || r.headers.get('x-jsonblob-id') || '';
+    const id = String(loc).split('/').filter(Boolean).pop();
+    if(!id) throw new Error('jsonblob-no-id');
+    syncBackend = 'jsonblob'; crudItemId = '';
+    return id;
+  }
+  async function jbGet(id){
+    const data = await fetchJSON(JB_API + '/' + encodeURIComponent(id), { headers:{ 'Accept':'application/json' } });
+    return isHumanPayload(data) ? stripMeta(data) : null;
+  }
+  async function jbPut(id, payload){
+    await fetchJSON(JB_API + '/' + encodeURIComponent(id), { method:'PUT', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body: JSON.stringify(payload) });
+    syncBackend = 'jsonblob';
+  }
+  async function crudGet(id){
+    const data = await fetchJSON(CRUD_API + '/' + encodeURIComponent(id), { headers:{ 'Accept':'application/json' } });
+    const arr = Array.isArray(data) ? data : (data ? [data] : []);
+    const items = arr.filter(isHumanPayload);
+    if(!items.length) return null;
+    items.sort(function(a,b){ return num(b.updatedAt) - num(a.updatedAt); });
+    crudItemId = items[0]._id || crudItemId;
+    syncBackend = 'crudcrud';
+    return stripMeta(items[0]);
+  }
+  async function crudCreate(id, payload){
+    const data = await fetchJSON(CRUD_API + '/' + encodeURIComponent(id), { method:'POST', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body: JSON.stringify(payload) });
+    crudItemId = data && data._id ? data._id : '';
+    syncBackend = 'crudcrud';
+    return id;
+  }
+  async function crudPut(id, payload){
+    if(!crudItemId){ await crudCreate(id, payload); return; }
+    const r = await fetch(CRUD_API + '/' + encodeURIComponent(id) + '/' + encodeURIComponent(crudItemId), { method:'PUT', headers:{ 'Content-Type':'application/json', 'Accept':'application/json' }, body: JSON.stringify(payload) });
+    if(r.status === 404){ crudItemId = ''; await crudCreate(id, payload); return; }
+    if(!r.ok) throw Object.assign(new Error('crud-put'), {status:r.status});
+    syncBackend = 'crudcrud';
+  }
+  async function pullRemote(id){
+    if(syncBackend === 'crudcrud'){ try{ const d = await crudGet(id); if(d) return d; }catch(e){} }
+    try{ const d = await jbGet(id); if(d){ syncBackend = 'jsonblob'; return d; } }catch(e){}
+    try{ const d = await crudGet(id); if(d) return d; }catch(e){}
+    return null;
+  }
+  async function createRemote(payload){
+    try{ return await jbCreate(payload); }
+    catch(e){ const id = newSyncId(); await crudCreate(id, payload); return id; }
+  }
+  async function pushRemote(id, payload){
+    const body = stripMeta(payload);
+    if(syncBackend === 'jsonblob'){ try{ await jbPut(id, body); return; }catch(e){} }
+    if(syncBackend === 'crudcrud'){ await crudPut(id, body); return; }
+    try{ await jbPut(id, body); return; }catch(e){}
+    await crudPut(id, body);
+  }
+  function scheduleCloudSave(){ clearTimeout(cloudTimer); cloudTimer = setTimeout(pushNow, 550); }
+  async function pushNow(){
+    if(!navigator.onLine){ setSyncStatus('Offline', 'offline'); return; }
+    if(!syncId) return;
+    if(pushing){ pendingPush = true; return; }
+    pushing = true; setSyncStatus('Saving…', '');
+    try{ await pushRemote(syncId, serialize()); setSyncStatus('Synced', 'ok'); }
+    catch(e){ setSyncStatus('Sync failed', 'failed'); }
+    pushing = false;
+    if(pendingPush){ pendingPush = false; scheduleCloudSave(); }
+  }
+  async function initSync(){
+    let id = parseHash();
+    if(!id){ try{ id = localStorage.getItem(SYNC_ID_KEY) || ''; }catch(e){ id = ''; } }
+    if(id){
+      setHash(id);
+      if(!navigator.onLine){ setSyncStatus('Offline', 'offline'); hydrating = false; return; }
+      setSyncStatus('Syncing…', '');
+      try{
+        const remote = await pullRemote(id);
+        const localTs = state.updatedAt || 0;
+        const remoteTs = remote ? num(remote.updatedAt) : 0;
+        if(remote && remoteTs > localTs){
+          hydrating = true; applyPayload(remote);
+          try{ localStorage.setItem(STORAGE, JSON.stringify(serialize())); }catch(e){}
+          render(); hydrating = false;
+        } else if(!remote || localTs > remoteTs){
+          hydrating = false; await pushRemote(id, serialize());
+        }
+        setSyncStatus('Synced', 'ok');
+      }catch(e){ setSyncStatus(navigator.onLine ? 'Sync failed' : 'Offline', navigator.onLine ? 'failed' : 'offline'); }
+    } else {
+      if(!navigator.onLine){ setSyncStatus('Offline', 'offline'); hydrating = false; return; }
+      setSyncStatus('Creating sync…', '');
+      try{
+        if(!state.updatedAt) state.updatedAt = Date.now();
+        const newId = await createRemote(serialize());
+        setHash(newId);
+        setSyncStatus('Synced — bookmark this link', 'ok');
+      }catch(e){ setSyncStatus('Sync failed', 'failed'); }
+    }
+    hydrating = false;
+  }
+
+  // ---------- money logic ----------
+  function currentBalance(){
+    if(state.balance==null) return null;
+    const asOf = state.balanceAsOf || '0000-00-00';
+    let b = state.balance;
+    state.expenses.forEach(function(e){ if(e.date > asOf) b -= num(e.amount); });
+    state.income.forEach(function(i){ if(i.date > asOf) b += num(i.amount); });
+    return b;
+  }
+  function rollPayday(){
+    const t = todayISO(); let n = state.pay.next; let changed=false;
+    while(n && n < t){ n = addDays(n,14); changed=true; }
+    if(changed){ state.pay.next = n; }
+    return changed;
+  }
+  function nextDue(b){
+    if(b.rec==='weekly') return addDays(b.due,7);
+    if(b.rec==='biweekly') return addDays(b.due,14);
+    if(b.rec==='monthly') return addMonth(b.due);
+    return null;
+  }
+  function inRange(iso, r){
+    const t = todayISO();
+    if(r==='all') return true;
+    if(r==='today') return iso===t;
+    if(r==='month') return iso.slice(0,7)===t.slice(0,7) && iso<=t;
+    const dow = (toD(t).getUTCDay()+6)%7; const start = addDays(t,-dow);
+    return iso>=start && iso<=t;
+  }
+  function sum(arr){ return arr.reduce(function(a,e){ return a+num(e.amount); },0); }
+
+  function render(){
+    const t = todayISO();
+    $('topDate').textContent = toD(t).toLocaleDateString('en-US',{timeZone:'UTC',weekday:'long',month:'long',day:'numeric'});
+    const bal = currentBalance();
+    const days = Math.max(0, diffDays(t, state.pay.next));
+    const dueBills = state.bills.filter(function(b){ return b.due < state.pay.next; });
+    const due = sum(dueBills);
+    $('daysTo').textContent = days===0 ? 'Today' : days + (days===1?' day':' days');
+    $('dueShow').textContent = money(due);
+    $('balShow').textContent = bal==null ? '–' : money(bal);
+    if(bal==null){
+      $('safe').textContent='–'; $('safe').className='big'; $('perDay').textContent='–';
+      $('safeSub').textContent='Enter your checking balance to get your number.';
+    } else {
+      const safe = bal - due;
+      $('safe').textContent = money(safe); $('safe').className = 'big' + (safe<0?' neg':'');
+      $('perDay').textContent = money(days>0 ? safe/days : safe);
+      $('safeSub').textContent = 'Until payday ' + fmtShort(state.pay.next) + ' · ' + money(state.pay.amount) + ' incoming';
+    }
+    $('balAsOf').textContent = state.balance==null ? '' : 'set ' + money(state.balance) + ' as of ' + fmtShort(state.balanceAsOf);
+    if(document.activeElement !== $('payAmt')) $('payAmt').value = state.pay.amount;
+    if(document.activeElement !== $('payDate')) $('payDate').value = state.pay.next;
+
+    // totals
+    $('tToday').textContent = money(sum(state.expenses.filter(function(e){ return inRange(e.date,'today'); })));
+    $('tWeek').textContent = money(sum(state.expenses.filter(function(e){ return inRange(e.date,'week'); })));
+    $('tMonth').textContent = money(sum(state.expenses.filter(function(e){ return inRange(e.date,'month'); })));
+    document.querySelectorAll('#rangeTabs .tab').forEach(function(b){ b.classList.toggle('on', b.dataset.r===range); });
+    const list = state.expenses.filter(function(e){ return inRange(e.date, range); }).sort(function(a,b){ return a.date<b.date?1:a.date>b.date?-1:(b.ts||0)-(a.ts||0); });
+    const cats = {}; list.forEach(function(e){ const c=e.cat||'Other'; cats[c]=(cats[c]||0)+num(e.amount); });
+    const total = sum(list); const ck = Object.keys(cats).sort(function(a,b){ return cats[b]-cats[a]; });
+    $('catBreak').innerHTML = ck.map(function(c){ return '<div class="cat"><span>'+esc(c)+'</span><div class="bar"><i style="width:'+(total?cats[c]/total*100:0)+'%"></i></div><span class="amt">'+money(cats[c])+'</span></div>'; }).join('');
+    $('expList').innerHTML = list.length ? list.map(function(e){
+      return '<div class="item" data-id="'+e.id+'"><div class="body"><div class="name">'+esc(e.note||e.cat||'Expense')+'</div><div class="meta">'+esc(e.cat||'Other')+' · '+fmtShort(e.date)+'</div></div><span class="amt">'+money(num(e.amount))+'</span><button class="gear" data-act="edit-exp" aria-label="Edit">✎</button><button class="x" data-act="del-exp" aria-label="Delete">×</button></div>';
+    }).join('') : '<p class="muted">Nothing logged here yet.</p>';
+    const allCats = {}; state.expenses.forEach(function(e){ if(e.cat) allCats[e.cat]=1; });
+    ['Food','Groceries','Gas','Bars','Shopping','Transport','Fun','Health'].forEach(function(c){ allCats[c]=1; });
+    $('cats').innerHTML = Object.keys(allCats).map(function(c){ return '<option value="'+esc(c)+'">'; }).join('');
+
+    // bills
+    const bills = state.bills.slice().sort(function(a,b){ return a.due<b.due?-1:1; });
+    const RL = {monthly:'monthly',biweekly:'every 2 wks',weekly:'weekly',once:'one-time'};
+    $('billList').innerHTML = bills.length ? bills.map(function(b){
+      const d = diffDays(t,b.due); const cls = d<0?' over':(b.due<state.pay.next?' soon':'');
+      const when = d<0 ? (-d)+'d overdue' : d===0 ? 'due today' : 'due '+fmtShort(b.due);
+      return '<div class="item'+cls+'" data-id="'+b.id+'"><button class="btn sm" data-act="paid" title="Mark paid">✓</button><div class="body"><div class="name">'+esc(b.name)+'</div><div class="meta">'+when+' · '+RL[b.rec]+(b.due<state.pay.next?' · before payday':'')+'</div></div><span class="amt">'+money(num(b.amount))+'</span><button class="gear" data-act="edit-bill" aria-label="Edit">✎</button><button class="x" data-act="del-bill" aria-label="Delete">×</button></div>';
+    }).join('') : '<p class="muted">No upcoming costs. Add rent, subscriptions, etc.</p>';
+
+    // income
+    const inc = state.income.slice().sort(function(a,b){ return a.date<b.date?1:-1; }).slice(0,8);
+    $('incList').innerHTML = inc.map(function(i){
+      return '<div class="item" data-id="'+i.id+'"><div class="body"><div class="name">'+esc(i.note||'Income')+'</div><div class="meta">'+fmtShort(i.date)+'</div></div><span class="amt in">+'+money(num(i.amount))+'</span><button class="x" data-act="del-inc" aria-label="Delete">×</button></div>';
+    }).join('');
+  }
+
+  function resetExpForm(){ editingExp=null; $('expAmt').value=''; $('expNote').value=''; $('expDate').value=todayISO(); $('expSubmit').textContent='Add'; $('expCancel').classList.add('hidden'); }
+  function resetBillForm(){ editingBill=null; $('billName').value=''; $('billAmt').value=''; $('billDue').value=''; $('billRec').value='monthly'; $('billSubmit').textContent='Add'; $('billCancel').classList.add('hidden'); }
+
+  $('balForm').addEventListener('submit', function(e){ e.preventDefault(); const v=$('balAmt').value; if(v==='') return;
+    state.balance = num(v); state.balanceAsOf = $('balDate').value || todayISO(); $('balAmt').value=''; persist(); render(); });
+  $('payForm').addEventListener('submit', function(e){ e.preventDefault(); state.pay.amount=num($('payAmt').value); if($('payDate').value) state.pay.next=$('payDate').value; persist(); render(); });
+  $('gotPaidBtn').addEventListener('click', function(){
+    state.income.push({ id:uid(), amount:state.pay.amount, note:'Paycheck', date:todayISO(), ts:Date.now() });
+    state.pay.next = addDays(state.pay.next > todayISO() ? state.pay.next : todayISO(), 14);
+    persist(); render(); });
+  $('incForm').addEventListener('submit', function(e){ e.preventDefault(); const v=$('incAmt').value; if(v==='') return;
+    state.income.push({ id:uid(), amount:num(v), note:$('incNote').value.trim()||'Income', date:$('incDate').value||todayISO(), ts:Date.now() });
+    $('incAmt').value=''; $('incNote').value=''; $('incDate').value=todayISO(); persist(); render(); });
+  $('expForm').addEventListener('submit', function(e){ e.preventDefault(); const v=$('expAmt').value; if(v==='') return;
+    const rec = { amount:num(v), cat:$('expCat').value.trim()||'Other', note:$('expNote').value.trim(), date:$('expDate').value||todayISO() };
+    if(editingExp){ const x=state.expenses.find(function(q){ return q.id===editingExp; }); if(x) Object.assign(x, rec); }
+    else state.expenses.push(Object.assign({ id:uid(), ts:Date.now() }, rec));
+    resetExpForm(); persist(); render(); $('expAmt').focus(); });
+  $('expCancel').addEventListener('click', resetExpForm);
+  $('billForm').addEventListener('submit', function(e){ e.preventDefault();
+    const rec = { name:$('billName').value.trim(), amount:num($('billAmt').value), due:$('billDue').value, rec:$('billRec').value };
+    if(!rec.name || !rec.due) return;
+    if(editingBill){ const x=state.bills.find(function(q){ return q.id===editingBill; }); if(x) Object.assign(x, rec); }
+    else state.bills.push(Object.assign({ id:uid() }, rec));
+    resetBillForm(); persist(); render(); });
+  $('billCancel').addEventListener('click', resetBillForm);
+  $('rangeTabs').addEventListener('click', function(e){ const b=e.target.closest('.tab'); if(!b) return; range=b.dataset.r; render(); });
+
+  document.addEventListener('click', function(e){
+    const btn = e.target.closest('[data-act]'); if(!btn) return;
+    const id = btn.closest('.item') && btn.closest('.item').dataset.id; const act = btn.dataset.act;
+    if(act==='del-exp'){ state.expenses = state.expenses.filter(function(x){ return x.id!==id; }); }
+    else if(act==='del-inc'){ state.income = state.income.filter(function(x){ return x.id!==id; }); }
+    else if(act==='del-bill'){ if(!confirm('Delete this cost?')) return; state.bills = state.bills.filter(function(x){ return x.id!==id; }); }
+    else if(act==='edit-exp'){ const x=state.expenses.find(function(q){ return q.id===id; }); if(!x) return; editingExp=id;
+      $('expAmt').value=x.amount; $('expCat').value=x.cat||''; $('expNote').value=x.note||''; $('expDate').value=x.date; $('expSubmit').textContent='Save'; $('expCancel').classList.remove('hidden'); $('expAmt').focus(); return; }
+    else if(act==='edit-bill'){ const x=state.bills.find(function(q){ return q.id===id; }); if(!x) return; editingBill=id;
+      $('billName').value=x.name; $('billAmt').value=x.amount; $('billDue').value=x.due; $('billRec').value=x.rec; $('billSubmit').textContent='Save'; $('billCancel').classList.remove('hidden'); $('billName').focus(); return; }
+    else if(act==='paid'){ const x=state.bills.find(function(q){ return q.id===id; }); if(!x) return;
+      state.expenses.push({ id:uid(), ts:Date.now(), amount:num(x.amount), cat:'Bills', note:x.name, date:todayISO(), bill:true });
+      const n = nextDue(x); if(n) x.due = n; else state.bills = state.bills.filter(function(q){ return q.id!==id; }); }
+    else return;
+    persist(); render();
+  });
+
+  $('themeBtn').addEventListener('click', function(){
+    const cur = document.documentElement.getAttribute('data-theme')==='dark' ? 'light' : 'dark';
+    document.documentElement.setAttribute('data-theme', cur); state.theme=cur; persist(); });
+  document.getElementById('exportBtn').addEventListener('click', function(){
+    const blob=new Blob([JSON.stringify(serialize(),null,2)],{type:'application/json'});
+    const a=document.createElement('a'); a.href=URL.createObjectURL(blob); a.download='money-'+todayISO()+'.json'; a.click(); URL.revokeObjectURL(a.href);
+  });
+  document.getElementById('importFile').addEventListener('change', function(e){
+    const file=e.target.files&&e.target.files[0]; e.target.value=''; if(!file) return;
+    const r=new FileReader();
+    r.onload=function(){ try{ applyPayload(JSON.parse(r.result)); persist(); render(); }catch(err){ flash('Fail'); } };
+    r.readAsText(file);
+  });
+  const reconnectBtn = document.getElementById('reconnectBtn');
+  if(reconnectBtn) reconnectBtn.addEventListener('click', function(){ initSync(); });
+
+  loadLocal();
+  if(rollPayday()) touch();
+  ['expDate','incDate','balDate'].forEach(function(i){ $(i).value=todayISO(); });
+  render();
+  initSync();
+  window.addEventListener('online', function(){ setSyncStatus('Syncing…', ''); if(syncId) pushNow(); else initSync(); });
+  window.addEventListener('offline', function(){ setSyncStatus('Offline', 'offline'); });
+  window.addEventListener('hashchange', function(){
+    const id = parseHash();
+    if(id && id !== syncId){ hydrating = true; initSync(); }
+  });
+})();
+</script>
+</body>
+</html>
