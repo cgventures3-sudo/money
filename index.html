@@ -164,7 +164,7 @@
           <div class="field"><label>As of</label><input id="balDate" type="date" /></div>
           <button class="btn btn-primary" type="submit" style="flex:0 0 auto">Update</button>
         </form>
-        <p class="fine">Logged expenses dated after the "as of" date are subtracted automatically; income after it is added.</p>
+        <p class="fine">Expenses logged after you set this are subtracted automatically; income after it is added.</p>
       </section>
       <section class="panel">
         <div class="panel-head"><h2>Income</h2></div>
@@ -282,13 +282,14 @@
 
   function serialize(){
     return { version:1, app:'money', theme: document.documentElement.getAttribute('data-theme') || 'light',
-      balance: state.balance, balanceAsOf: state.balanceAsOf, pay: state.pay, expenses: state.expenses, bills: state.bills, income: state.income, subs: state.subs, cats: state.cats, updatedAt: state.updatedAt };
+      balance: state.balance, balanceAsOf: state.balanceAsOf, balanceTs: state.balanceTs, pay: state.pay, expenses: state.expenses, bills: state.bills, income: state.income, subs: state.subs, cats: state.cats, updatedAt: state.updatedAt };
   }
   function applyPayload(p){
     if(!p || typeof p !== 'object') return;
     if(p.theme==='dark' || p.theme==='light'){ state.theme=p.theme; document.documentElement.setAttribute('data-theme', p.theme); }
     if('balance' in p) state.balance = p.balance==null ? null : num(p.balance);
     if(typeof p.balanceAsOf === 'string') state.balanceAsOf = p.balanceAsOf;
+    state.balanceTs = num(p.balanceTs);
     if(p.pay && typeof p.pay === 'object') state.pay = { amount:num(p.pay.amount), next:String(p.pay.next||state.pay.next) };
     if(Array.isArray(p.expenses)) state.expenses = p.expenses;
     if(Array.isArray(p.bills)) state.bills = p.bills;
@@ -473,8 +474,10 @@
     if(state.balance==null) return null;
     const asOf = state.balanceAsOf || '0000-00-00';
     let b = state.balance;
-    state.expenses.forEach(function(e){ if(e.date > asOf) b -= num(e.amount); });
-    state.income.forEach(function(i){ if(i.date > asOf) b += num(i.amount); });
+    const bt = num(state.balanceTs);
+    function after(x){ return x.date > asOf || (x.date === asOf && num(x.ts) > bt); }
+    state.expenses.forEach(function(e){ if(after(e)) b -= num(e.amount); });
+    state.income.forEach(function(i){ if(after(i)) b += num(i.amount); });
     return b;
   }
   function rollPayday(){
@@ -582,7 +585,7 @@
   function resetBillForm(){ editingBill=null; $('billName').value=''; $('billAmt').value=''; $('billDue').value=''; $('billRec').value='monthly'; $('billSubmit').textContent='Add'; $('billCancel').classList.add('hidden'); }
 
   $('balForm').addEventListener('submit', function(e){ e.preventDefault(); const v=$('balAmt').value; if(v==='') return;
-    state.balance = num(v); state.balanceAsOf = $('balDate').value || todayISO(); $('balAmt').value=''; persist(); render(); });
+    state.balance = num(v); state.balanceAsOf = $('balDate').value || todayISO(); state.balanceTs = Date.now(); $('balAmt').value=''; persist(); render(); });
   $('payForm').addEventListener('submit', function(e){ e.preventDefault(); state.pay.amount=num($('payAmt').value); if($('payDate').value) state.pay.next=$('payDate').value; persist(); render(); });
   $('gotPaidBtn').addEventListener('click', function(){
     state.income.push({ id:uid(), amount:state.pay.amount, note:'Paycheck', date:todayISO(), ts:Date.now() });
