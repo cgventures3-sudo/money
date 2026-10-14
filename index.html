@@ -99,6 +99,13 @@
   .hero .stats{ display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:.75rem; margin-top:1.1rem; }
   .hero .stat{ background:rgba(255,255,255,.13); border-radius:12px; padding:.65rem .8rem; }
   .hero .stat .v{ font-size:1.12rem; font-weight:700; margin-top:.1rem; }
+  .hero .brk{ margin-top:.9rem; background:rgba(255,255,255,.1); border-radius:12px; padding:.55rem .8rem; font-size:.86rem; }
+  .hero .brk .ln{ display:flex; justify-content:space-between; gap:.75rem; padding:.12rem 0; min-width:0; }
+  .hero .brk .ln span:first-child{ min-width:0; overflow-wrap:anywhere; color:rgba(255,255,255,.85); }
+  .hero .brk .ln span:last-child{ white-space:nowrap; font-weight:600; font-variant-numeric:tabular-nums; }
+  .hero .brk .tot{ border-top:1px solid rgba(255,255,255,.3); margin-top:.25rem; padding-top:.3rem; font-weight:700; }
+  .hero .warn{ margin-top:.6rem; background:rgba(127,29,29,.45); border:1px solid rgba(254,202,202,.6); color:#fff; border-radius:10px; padding:.45rem .7rem; font-size:.85rem; font-weight:600; }
+  .hero .hint{ margin-top:.5rem; font-size:.82rem; color:rgba(255,255,255,.9); }
   .pbar{ display:none; height:8px; border-radius:99px; background:rgba(255,255,255,.2); margin-top:.9rem; overflow:hidden; }
   .pbar i{ display:block; height:100%; background:#fff; border-radius:99px; }
   .ring{ position:relative; width:150px; height:150px; }
@@ -293,6 +300,9 @@
           <div class="stat"><div class="k">Safe / day</div><div class="v" id="perDay">–</div></div>
           <div class="stat"><div class="k">Due before payday</div><div class="v" id="dueShow">–</div></div>
         </div>
+        <div class="brk" id="safeBrk"></div>
+        <div class="warn hidden" id="safeWarn"></div>
+        <div class="hint hidden" id="safeHint"></div>
         <div class="pbar" aria-hidden="true"><i id="payBar"></i></div>
       </div>
       <div class="ring" aria-hidden="true">
@@ -349,9 +359,19 @@
       <form id="payForm" class="row">
         <div class="field"><label>Paycheck (net)</label><input id="payAmt" type="number" step="0.01" inputmode="decimal" /></div>
         <div class="field"><label>Next payday</label><input id="payDate" type="date" /></div>
+        <div class="field"><label>Frequency</label><select id="payFreq"><option value="biweekly">Every 2 weeks</option><option value="weekly">Weekly</option><option value="semimonthly">Twice a month (15 days)</option><option value="monthly">Monthly</option></select></div>
         <button class="btn" type="submit">Save</button>
       </form>
-      <p class="fine">Every two weeks. “Got paid ✓” logs it and rolls to the next payday.</p>
+      <p class="fine">“Got paid ✓” logs it and rolls to the next payday.</p>
+      <div class="sep"></div>
+      <div class="panel-head"><h2>Savings buffer</h2></div>
+      <form id="saveForm" class="row">
+        <div class="field"><label>Always keep ($)</label><input id="saveBuf" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0.00" /></div>
+        <div class="field"><label>Save per paycheck</label><input id="savePer" type="number" step="0.01" min="0" inputmode="decimal" placeholder="0" /></div>
+        <div class="field"><label>As</label><select id="saveMode"><option value="amt">$ amount</option><option value="pct">% of pay</option></select></div>
+        <button class="btn" type="submit">Save</button>
+      </form>
+      <p class="fine">The cushion is never counted as spendable. Per-paycheck savings is set aside from future checks when checking whether they cover upcoming bills (rent etc.).</p>
       <div class="sep"></div>
       <form id="incForm" class="row">
         <div class="field"><label>One-off income</label><input id="incAmt" type="number" step="0.01" inputmode="decimal" placeholder="Amount" /></div>
@@ -429,13 +449,14 @@
   function fmtShort(iso){ return toD(iso).toLocaleDateString('en-US',{timeZone:'UTC',weekday:'short',month:'short',day:'numeric'}); }
   function nextFriday(){ const t=todayISO(); const dow=toD(t).getUTCDay(); return addDays(t, ((5-dow+7)%7)||7); }
 
+  const PAYSTEP = { weekly:7, biweekly:14, semimonthly:15, monthly:30 };
   const DEFAULT_CATS = ['Food','Groceries','Gas','Bills','Subscriptions','Fun','Health','Shopping','Transport','Other'];
-  const state = { theme:'light', balance:null, balanceAsOf:'', pay:{ amount:1900, next:nextFriday() }, expenses:[], bills:[], income:[], subs:[], cats:DEFAULT_CATS.slice(), updatedAt:0 };
+  const state = { theme:'light', balance:null, balanceAsOf:'', pay:{ amount:1900, next:nextFriday(), freq:'biweekly' }, save:{ buffer:0, perPay:0, mode:'amt' }, expenses:[], bills:[], income:[], subs:[], cats:DEFAULT_CATS.slice(), updatedAt:0 };
   let range = 'month', editingExp = null, editingBill = null, editingSub = null;
 
   function serialize(){
     return { version:1, app:'money', theme: document.documentElement.getAttribute('data-theme') || 'light',
-      balance: state.balance, balanceAsOf: state.balanceAsOf, balanceTs: state.balanceTs, pay: state.pay, expenses: state.expenses, bills: state.bills, income: state.income, subs: state.subs, cats: state.cats, updatedAt: state.updatedAt };
+      balance: state.balance, balanceAsOf: state.balanceAsOf, balanceTs: state.balanceTs, pay: state.pay, save: state.save, expenses: state.expenses, bills: state.bills, income: state.income, subs: state.subs, cats: state.cats, updatedAt: state.updatedAt };
   }
   function applyPayload(p){
     if(!p || typeof p !== 'object') return;
@@ -443,7 +464,8 @@
     if('balance' in p) state.balance = p.balance==null ? null : num(p.balance);
     if(typeof p.balanceAsOf === 'string') state.balanceAsOf = p.balanceAsOf;
     state.balanceTs = num(p.balanceTs);
-    if(p.pay && typeof p.pay === 'object') state.pay = { amount:num(p.pay.amount), next:String(p.pay.next||state.pay.next) };
+    if(p.pay && typeof p.pay === 'object') state.pay = { amount:num(p.pay.amount), next:String(p.pay.next||state.pay.next), freq:(PAYSTEP[p.pay.freq]?p.pay.freq:'biweekly') };
+    if(p.save && typeof p.save === 'object') state.save = { buffer:Math.max(0,num(p.save.buffer)), perPay:Math.max(0,num(p.save.perPay)), mode:(p.save.mode==='pct'?'pct':'amt') };
     if(Array.isArray(p.expenses)) state.expenses = p.expenses;
     if(Array.isArray(p.bills)) state.bills = p.bills;
     if(Array.isArray(p.income)) state.income = p.income;
@@ -621,9 +643,10 @@
     state.income.forEach(function(i){ if(after(i)) b += num(i.amount); });
     return b;
   }
+  function payStep(iso){ const f=state.pay.freq; if(f==='monthly') return addMonth(iso); return addDays(iso, PAYSTEP[f]||14); }
   function rollPayday(){
-    const t = todayISO(); let n = state.pay.next; let changed=false;
-    while(n && n < t){ n = addDays(n,14); changed=true; }
+    const t = todayISO(); let n = state.pay.next; let changed=false, g=0;
+    while(n && n < t && g++<500){ n = payStep(n); changed=true; }
     if(changed){ state.pay.next = n; }
     return changed;
   }
@@ -652,6 +675,29 @@
     const dow = (toD(t).getUTCDay()+6)%7; const start = addDays(t,-dow);
     return iso>=start && iso<=t;
   }
+  // All bills + active recurring charges with due date in [start, end).
+  function obligations(start, end){
+    let tot=0;
+    state.bills.forEach(function(b){ if(!b.due) return; let d=b.due, g=0;
+      while(d < end && g++<200){ if(d >= start) tot += num(b.amount); const n = nextDue({due:d, rec:b.rec}); if(!n) break; d=n; } });
+    state.subs.forEach(function(x){ if(!x.active||!x.next) return; let d=x.next, g=0;
+      while(d < end && g++<200){ if(d >= start) tot += num(x.amount); d=stepCad(d,x.cadence); } });
+    return tot;
+  }
+  function planSavings(){ const s=state.save; return s.mode==='pct' ? num(state.pay.amount)*Math.min(100,s.perPay)/100 : s.perPay; }
+  // Look ahead >=60 days / >=2 pay cycles from next payday. Each period's paycheck (minus planned savings) must cover
+  // that period's bills; any cumulative deficit has to be held back from today's balance.
+  function shortfallReserve(){
+    const start = state.pay.next, horizon = addDays(start, 60);
+    const net = num(state.pay.amount) - planSavings();
+    let a = start, cum = 0, worst = 0, k = 0, periods = [];
+    while((a < horizon || k < 2) && k < 12){
+      const b = payStep(a), need = obligations(a, b);
+      cum += net - need; worst = Math.min(worst, cum);
+      periods.push({ from:a, to:b, need:need, net:net }); a = b; k++;
+    }
+    return { reserve: -worst, periods: periods };
+  }
   function sum(arr){ return arr.reduce(function(a,e){ return a+num(e.amount); },0); }
 
   function render(){
@@ -668,14 +714,31 @@
       $('safe').textContent='–'; $('safe').className='big'; $('perDay').textContent='–';
       $('safeSub').textContent='Enter your checking balance to get your number.';
     } else {
-      const safe = bal - due;
-      $('safe').textContent = money(safe); $('safe').className = 'big' + (safe<0?' neg':'');
+      const sf = shortfallReserve(), buf = num(state.save.buffer);
+      const raw = bal - due - sf.reserve - buf, safe = Math.max(0, raw);
+      $('safe').textContent = money(safe); $('safe').className = 'big' + (raw<0?' neg':'');
       $('perDay').textContent = money(days>0 ? safe/days : safe);
       $('safeSub').textContent = 'Until payday ' + fmtShort(state.pay.next) + ' · ' + money(state.pay.amount) + ' incoming';
+      function ln(a,b,c){ return '<div class="ln'+(c?' tot':'')+'"><span>'+a+'</span><span>'+b+'</span></div>'; }
+      $('safeBrk').innerHTML = ln('Balance', money(bal)) + ln('− Due before payday', money(due)) +
+        ln('− Held for upcoming bills (next ~60 days)', money(sf.reserve)) + ln('− Savings buffer', money(buf)) + ln('= Safe to spend', money(safe), true);
+      $('safeWarn').classList.toggle('hidden', raw >= 0);
+      $('safeWarn').textContent = raw < 0 ? '⚠ Short ' + money(-raw) + ': upcoming bills exceed income' + (buf>0?' (after your savings buffer)':'') + '. Nothing is safe to spend.' : '';
+      const recurring = state.bills.some(function(b){ return b.rec && b.rec!=='once'; }) || state.subs.some(function(x){ return x.active; });
+      const hasRent = state.bills.some(function(b){ return /rent|mortgage/i.test(b.name||''); });
+      const hints = [];
+      if(!hasRent) hints.push((recurring?'Rent isn’t set up':'No recurring bills set up')+': add Rent under Bills (amount, due date, Monthly) so money is held back for it.');
+      if(!buf) hints.push('No savings buffer set: add one under Income → Savings buffer.');
+      $('safeHint').textContent = hints.length ? 'ⓘ ' + hints.join(' ') : '';
+      $('safeHint').classList.toggle('hidden', !hints.length);
     }
     $('balAsOf').textContent = state.balance==null ? '' : 'set ' + money(state.balance) + ' as of ' + fmtShort(state.balanceAsOf);
     if(document.activeElement !== $('payAmt')) $('payAmt').value = state.pay.amount;
     if(document.activeElement !== $('payDate')) $('payDate').value = state.pay.next;
+    if(document.activeElement !== $('payFreq')) $('payFreq').value = state.pay.freq || 'biweekly';
+    if(document.activeElement !== $('saveBuf')) $('saveBuf').value = state.save.buffer || '';
+    if(document.activeElement !== $('savePer')) $('savePer').value = state.save.perPay || '';
+    if(document.activeElement !== $('saveMode')) $('saveMode').value = state.save.mode;
 
     // totals
     $('tToday').textContent = money(sum(state.expenses.filter(function(e){ return inRange(e.date,'today'); })));
@@ -834,10 +897,11 @@
 
   $('balForm').addEventListener('submit', function(e){ e.preventDefault(); const v=$('balAmt').value; if(v==='') return;
     state.balance = num(v); state.balanceAsOf = $('balDate').value || todayISO(); state.balanceTs = Date.now(); $('balAmt').value=''; persist(); render(); });
-  $('payForm').addEventListener('submit', function(e){ e.preventDefault(); state.pay.amount=num($('payAmt').value); if($('payDate').value) state.pay.next=$('payDate').value; persist(); render(); });
+  $('payForm').addEventListener('submit', function(e){ e.preventDefault(); state.pay.amount=num($('payAmt').value); if($('payDate').value) state.pay.next=$('payDate').value; state.pay.freq=$('payFreq').value; persist(); render(); });
+  $('saveForm').addEventListener('submit', function(e){ e.preventDefault(); state.save = { buffer:Math.max(0,num($('saveBuf').value)), perPay:Math.max(0,num($('savePer').value)), mode:$('saveMode').value==='pct'?'pct':'amt' }; persist(); render(); });
   $('gotPaidBtn').addEventListener('click', function(){
     state.income.push({ id:uid(), amount:state.pay.amount, note:'Paycheck', date:todayISO(), ts:Date.now() });
-    state.pay.next = addDays(state.pay.next > todayISO() ? state.pay.next : todayISO(), 14);
+    state.pay.next = payStep(state.pay.next > todayISO() ? state.pay.next : todayISO());
     persist(); render(); });
   $('incForm').addEventListener('submit', function(e){ e.preventDefault(); const v=$('incAmt').value; if(v==='') return;
     state.income.push({ id:uid(), amount:num(v), note:$('incNote').value.trim()||'Income', date:$('incDate').value||todayISO(), ts:Date.now() });
